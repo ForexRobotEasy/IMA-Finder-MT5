@@ -1,0 +1,79 @@
+
+//+------------------------------------------------------------------+
+//|                                                           IMA Finder MT5 |
+//|                                      https://www.forexroboteasy.com  |
+//|                                                            Forex Robot Easy Team |
+//+------------------------------------------------------------------+
+
+//--- Indicator input parameters
+input string    SymbolName         = '';              // Symbol name
+input ENUM_TIMEFRAMES Timeframe    = PERIOD_CURRENT;  // Timeframe
+input int       Period              = 14;              // Period
+
+//--- Signal sending parameters
+input bool      SendSignals        = true;            // Enable signal sending
+input int       SignalType         = 1;               // Signal type (1 - alert, 2 - email, 3 - notification)
+input string    SignalMessage   = 'Moving Origin indicator surpassed price';  // Signal message
+
+//--- Global variables
+double          iMA_Buffer[];                        // Buffer for Moving Origin indicator values
+
+//+------------------------------------------------------------------+
+//| Custom indicator initialization function                         |
+//+------------------------------------------------------------------+
+int OnInit()
+{
+   //--- Initialize Moving Origin indicator
+   IndicatorSetString(INDICATOR_SHORTNAME, 'Moving Origin');
+   IndicatorSetString(INDICATOR_LEVELS, '');
+   IndicatorSetInteger(INDICATOR_DIGITS, _Digits);
+   IndicatorSetInteger(INDICATOR_BUFFERS, 1);
+   IndicatorSetInteger(INDICATOR_COLOR_INDEX, 0);
+   IndicatorSetInteger(0, INDICATOR_CALCULATIONS, 1);
+   SetIndexStyle(0, DRAW_LINE);
+   SetIndexBuffer(0, iMA_Buffer);
+   SetIndexEmptyValue(0, EMPTY_VALUE);
+   
+   //--- Return initialization result
+   return(INIT_SUCCEEDED);
+}
+
+//+------------------------------------------------------------------+
+//| Custom indicator iteration function                              |
+//+------------------------------------------------------------------+
+int OnCalculate(const int rates_total, const int prev_calculated, const datetime& time[], const double& open[], const double& high[], const double& low[], const double& close[], const long& tick_volume[], const long& volume[], const int& spread[])
+{
+   //--- Calculate Moving Origin indicator
+   int limit = rates_total;
+   if(prev_calculated > rates_total || prev_calculated <= 0)
+   {
+      limit -= Period;
+      if(prev_calculated > 0)
+         limit += 1;
+   }
+   ArraySetAsSeries(iMA_Buffer, false);
+   CopyBuffer(SymbolName, Timeframe, 0, limit, iMA_Buffer);
+   
+   //--- Check if Moving Origin indicator surpasses price
+   double current_price = close[0];
+   double last_indicator_value = iMA_Buffer[limit - 1];
+   if(current_price > last_indicator_value)
+   {
+      //--- Send signal if enabled
+      if(SendSignals)
+      {
+         switch(SignalType)
+         {
+            case 1: Alert(SignalMessage); break;
+            case 2: SendMail('IMA Finder MT5', SignalMessage); break;
+            case 3: SendNotification(SignalMessage); break;
+         }
+      }
+      
+      //--- Print signal information
+      Print('Moving Origin indicator surpassed price');
+   }
+   
+   //--- Return the number of calculated bars
+   return(rates_total);
+}
